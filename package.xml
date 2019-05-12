@@ -9,6 +9,7 @@
   <license>TODO</license>
 
   <url type="website">https://www.linkedin.com/in/duynam-uet-robotics/</url>
+  <url type="website">https://www.facebook.com/duynam.robotics.uet</url>
 
   <author>Duy Nam</author>
 
@@ -16,12 +17,18 @@
   <build_depend>roscpp</build_depend>
   <build_depend>std_msgs</build_depend>
   <build_depend>turtlesim</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>std_msgs</build_export_depend>
   <build_export_depend>turtlesim</build_export_depend>
+  <build_export_depend>geometry_msgs</build_export_depend>
+
   <exec_depend>roscpp</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>turtlesim</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+
 
   <export></export>
 </package>
