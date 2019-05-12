@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>ROS_turtle_control</name>
+  <name>ros_turtle_control</name>
   <version>0.0.0</version>
   <description>The ROS_turtle_control package</description>
 

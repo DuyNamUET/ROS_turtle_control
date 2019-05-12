@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 #set (CMAKE_CXX_STANDARD 11)
-project(ROS_turtle_control)
+project(ros_turtle_control)
 
 add_compile_options(-std=c++11)
 
@@ -20,3 +20,6 @@ target_link_libraries(move_to_goal ${catkin_LIBRARIES})
 
 add_executable(multi_checkpoint src/multi_checkpoint.cpp)
 target_link_libraries(multi_checkpoint ${catkin_LIBRARIES})
+
+add_executable(multi_turtle src/multi_turtle.cpp)
+target_link_libraries(multi_turtle ${catkin_LIBRARIES})
