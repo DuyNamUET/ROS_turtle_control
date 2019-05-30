@@ -3,13 +3,11 @@
 ** $ rosrun ROS_turte_control multi_checkpoint [list checkpoint] **
 ** each two number is one checkpoint                             **
 ******************************************************************/
-
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
 #include <turtlesim/Pose.h>
 
 #define PI 3.1415926536
-// #define DISTANCE_MAX 18.0
 
 turtlesim::Pose current_pose;
 
@@ -29,19 +27,33 @@ double distanceLinear(const turtlesim::Pose &pose, const CheckPoint &cp)
 
 double distanceAngular(const turtlesim::Pose &pose, const CheckPoint &cp)
 {
-    double angular_z;
-    angular_z = asin((cos(pose.theta) * (cp.goal_y - pose.y) - sin(pose.theta) * (cp.goal_x - pose.x))
-                        / distanceLinear(pose, cp));
-    if(distanceLinear(pose, cp)  == 0.0) angular_z = 0.0;
-    return angular_z;
+    double linear_x = distanceLinear(pose, cp);
+    if(linear_x == 0) return 0.0;
+    else
+    {
+        return asin((cos(pose.theta) * (cp.goal_y - pose.y) - sin(pose.theta) * (cp.goal_x - pose.x))
+                    / linear_x);
+    }   
+}
+
+double sign(const turtlesim::Pose &pose, const CheckPoint &cp)
+{
+    double scalar = acos((cos(pose.theta) * (cp.goal_x - pose.x) + sin(pose.theta) * (cp.goal_y - pose.y))
+                    / distanceLinear(pose, cp));
+    if(scalar > PI / 2) return -1.0;
+    else return 1.0;
 }
 
 //Get velocity
 geometry_msgs::Twist getVelocity(const turtlesim::Pose &pose, const CheckPoint &cp)
 {
+    double linear_x = distanceLinear(pose, cp);
+    double angular_z = distanceAngular(pose, cp);
+    double sign_ = sign(pose, cp);
+
     geometry_msgs::Twist vel;
-    vel.linear.x = (distanceLinear(pose, cp) > 1) ? 1.5 * distanceLinear(pose, cp) : 1.0;
-    vel.angular.z = 20.0 * distanceAngular(pose, cp);
+    vel.linear.x = (linear_x > 1) ? 5 * linear_x * sign_ : 2.0 * sign_;
+    vel.angular.z = 25.0 * angular_z * sign_;
     return vel;
 }
 
@@ -101,6 +113,9 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "gogo");
     ros::NodeHandle node;
+
+    ros::Time start = ros::Time::now();
+    
     ros::Subscriber sub = node.subscribe("/turtle1/pose", 100, &poseUpdate);
     ros::Publisher pub = node.advertise<geometry_msgs::Twist>("/turtle1/cmd_vel", 100);
 
@@ -131,6 +146,7 @@ int main(int argc, char **argv)
         {
             pub.publish(stop());
             ROS_INFO("all done!!");
+            break;
         }
         else
         {
@@ -141,5 +157,7 @@ int main(int argc, char **argv)
         rate.sleep();
         ros::spinOnce();
     }
+    ros::Time finish = ros::Time::now();
+    ROS_INFO("total time: %f", (finish - start).toSec());
     return 0;
 }

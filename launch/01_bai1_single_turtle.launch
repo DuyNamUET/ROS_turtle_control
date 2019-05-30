@@ -1,0 +1,6 @@
+<launch>
+    <node pkg="turtlesim" type="turtlesim_node" name="ts1"/>
+    <node pkg="turtlesim" type="turtle_teleop_key" name="tk1"/>
+    <node pkg="ros_turtle_control" type="multi_checkpoint" name="bai1"
+    		args="1 1 10 10 10 1 1 10" output="screen" />
+</launch>

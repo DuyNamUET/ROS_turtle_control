@@ -11,13 +11,11 @@
 #include <turtlesim/Spawn.h>
 #include <turtlesim/Pose.h>
 
-#define MAX_LINEAR 10.0
-#define MAX_ANGULAR 4.0
+#define PI 3.1415926536
 
 class TTurtle
 {
     public:
-    int index;
     ros::Subscriber sub;
     ros::Publisher pub;
     turtlesim::Pose pose;
@@ -25,6 +23,8 @@ class TTurtle
     void poseCallback(const turtlesim::Pose::ConstPtr& msg)
     {
         pose = *msg;
+        if(pose.theta > PI) pose.theta -= 2 * PI;
+        if(pose.theta < -PI) pose.theta += 2 * PI;
     }
 };
 
@@ -45,19 +45,41 @@ double distanceLinear(const turtlesim::Pose &pose, const CheckPoint &cp)
 
 double distanceAngular(const turtlesim::Pose &pose, const CheckPoint &cp)
 {
-    double angular_z;
-    angular_z = asin((cos(pose.theta) * (cp.goal_y - pose.y) - sin(pose.theta) * (cp.goal_x - pose.x))
-                        / distanceLinear(pose, cp));
-    if(distanceLinear(pose, cp)  == 0.0) angular_z = 0.0;
-    return angular_z;
+    double linear_x = distanceLinear(pose, cp);
+    if(linear_x == 0) return 0.0;
+    else
+    {
+        return asin((cos(pose.theta) * (cp.goal_y - pose.y) - sin(pose.theta) * (cp.goal_x - pose.x))
+                    / linear_x);
+    }   
+}
+
+double sign(const turtlesim::Pose &pose, const CheckPoint &cp)
+{
+    double scalar = acos((cos(pose.theta) * (cp.goal_x - pose.x) + sin(pose.theta) * (cp.goal_y - pose.y))
+                    / distanceLinear(pose, cp));
+    if(scalar > PI / 2) return -1.0;
+    else return 1.0;
 }
 
 //Get velocity
 geometry_msgs::Twist getVelocity(const turtlesim::Pose &pose, const CheckPoint &cp)
 {
+    double linear_x = distanceLinear(pose, cp);
+    double angular_z = distanceAngular(pose, cp);
+    double sign_ = sign(pose, cp);
+
     geometry_msgs::Twist vel;
-    vel.linear.x = 1.5 * distanceLinear(pose, cp);
-    vel.angular.z = 20.0 * distanceAngular(pose, cp);
+    vel.linear.x = (linear_x > 1.5) ? 5 * linear_x * sign_ : 1.5 * sign_;
+    vel.angular.z = 25.0 * angular_z * sign_;
+    return vel;
+}
+
+geometry_msgs::Twist stop()
+{
+    geometry_msgs::Twist vel;
+    vel.linear.x = 0.0;
+    vel.angular.z = 0.0;
     return vel;
 }
 
@@ -94,6 +116,8 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "multi");
     ros::NodeHandle node;
 
+    ros::Time start = ros::Time::now();
+
     int num = atoi(argv[1]);
     TTurtle tturtle[num];
     CheckPoint* p[num];
@@ -108,33 +132,40 @@ int main(int argc, char** argv)
             ros::service::waitForService("spawn");
             ros::ServiceClient spawner = node.serviceClient<turtlesim::Spawn>("spawn");
             turtlesim::Spawn turtle;
-            turtle.request.x = atof(argv[2 * i]);
-            turtle.request.y = atof(argv[2 * i + 1]);
+            turtle.request.x = rand() % 12;
+            turtle.request.y = rand() % 12;
             spawner.call(turtle);
         }
 
-        tturtle[i].index = i;
         tturtle[i].sub = node.subscribe(name + "/pose", 100, &TTurtle::poseCallback, &tturtle[i]);
         tturtle[i].pub = node.advertise<geometry_msgs::Twist>(name + "/cmd_vel", 100);
 
         p[i] = NULL;
     }
 
-    int len = (argc - 2 - 2 * (num - 1)) / 2;
+    int len = (argc - 2) / 2;
     CheckPoint arr_cp[len];
     for(int i = 0; i < len; i++)
     {
-        arr_cp[i].goal_x = atof(argv[2 * (i + num)]);
-        arr_cp[i].goal_y = atof(argv[2 * (i + num) + 1]);
+        arr_cp[i].goal_x = atof(argv[2 * (i + 1)]);
+        arr_cp[i].goal_y = atof(argv[2 * (i + 1) +1]);
         arr_cp[i].state = false;
+        // ROS_INFO("%f %f", arr_cp[i].goal_x, arr_cp[i].goal_y);
     }
 
-    ros::Rate rate(100);
+    ros::Rate rate(50);
     while(node.ok())
     {
+        int count = 0;
         for(int i = 0; i < num; i++)
         {
-            if(p[i] == NULL) p[i] = p_minCheckPoint(tturtle[i].pose, arr_cp, len);
+            if(p[i] == NULL)
+            {
+                tturtle[i].pub.publish(stop());
+                p[i] = p_minCheckPoint(tturtle[i].pose, arr_cp, len);
+                if(p[i] == NULL) count++;
+                // ROS_INFO("%f %f",p[i]->goal_x, p[i]->goal_y);
+            }
             else
             {
                 tturtle[i].pub.publish(getVelocity(tturtle[i].pose, *p[i]));
@@ -142,10 +173,13 @@ int main(int argc, char** argv)
             }
         }
 
+        if(count == num) break;
+
         rate.sleep();
         ros::spinOnce();    
     }
+    ros::Time finish = ros::Time::now();
+    ROS_INFO("total time: %f", (finish - start).toSec());
     
     return 0;
 }
-
