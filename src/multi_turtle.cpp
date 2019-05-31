@@ -70,8 +70,8 @@ geometry_msgs::Twist getVelocity(const turtlesim::Pose &pose, const CheckPoint &
     double sign_ = sign(pose, cp);
 
     geometry_msgs::Twist vel;
-    vel.linear.x = (linear_x > 1.5) ? 5 * linear_x * sign_ : 1.5 * sign_;
-    vel.angular.z = 25.0 * angular_z * sign_;
+    vel.linear.x = (linear_x > 1.5) ? 1.5 * linear_x * sign_ : 1.0 * sign_;
+    vel.angular.z = 20.0 * angular_z * sign_;
     return vel;
 }
 
